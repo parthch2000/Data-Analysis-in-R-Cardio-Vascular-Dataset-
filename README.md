@@ -1,1 +1,4 @@
-# Data-Analysis-in-R-Cardio-Vascular-Dataset-
+# Data-Analysis-in-R-Cardio-Vascular-Dataset
+Dataset used is cardio_train.csv
+In R Studio, open the 18bce1039_final.Rmd file for the source code.
+The output of the Rmd flie (after using 'knit' in R Studio) in HTML page is 18bce1039_final.html
