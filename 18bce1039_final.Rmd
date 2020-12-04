@@ -1,0 +1,335 @@
+---
+title: "CARDIOVASCULAR DISEASE : ANALYSIS OF CAUSES AND PREDICTION"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+### Reg. No: 18BCE1039
+
+### Name: PARTH CHOUDHARY
+
+## Setup
+
+### Load packages
+```{r}
+library(dplyr)
+library(ggplot2)
+library(GGally)
+```
+### Load data
+```{r}
+cardio=read.csv("cardio_train.csv")
+```
+
+* * *
+
+## What problem are you trying to solve?
+```{r}
+#To find out how different factors affects the cardiovascular disease
+#and predict if someone have the disease or not based on these factors.
+```
+
+* * *
+
+
+* * *
+
+## What data have you chosen?(Chosen Dataset, Source of dataset, Description of dataset, basic commands to describe dataset)
+
+### Dataset chosen : Cardiovascular Disease Dataset (CSV file)
+
+### Source : www.kaggle.com (https://www.kaggle.com/sulianova/cardiovascular-disease-dataset)
+
+### Description : 
+
+### There are 3 types of input features:
+
+### 1 Objective: factual information;
+
+### 2 Examination: results of medical examination;
+
+### 3 Subjective: information given by the patient.
+
+### Features:
+```{r}
+#Feature | Variable Type | Variable | Value Type
+
+#Age | Objective Feature | age | int (days)
+#Height | Objective Feature | height | int (cm) |
+#Weight | Objective Feature | weight | float (kg) |
+#Gender | Objective Feature | gender | categorical code |
+#Systolic blood pressure | Examination Feature | ap_hi | int |
+#Diastolic blood pressure | Examination Feature | ap_lo | int |
+#Cholesterol | Examination Feature | cholesterol | 1: normal, 2: above normal, 3: well above normal |
+#Glucose | Examination Feature | gluc | 1: normal, 2: above normal, 3: well above normal |
+#Smoking | Subjective Feature | smoke | binary |
+#Alcohol intake | Subjective Feature | alco | binary |
+#Physical activity | Subjective Feature | active | binary |
+#Presence or absence of cardiovascular disease | Target Variable | cardio | binary |
+```
+# Description using basic commands
+```{r}
+#No. of rows :
+nrow(cardio)
+#No. of columns :
+ncol(cardio)
+```
+```{r}
+#Displaying the structure of the dataset :
+str(cardio)
+```
+```{r}
+#Displaying class and type of the cardio dataframe :
+class(cardio)
+typeof(cardio)
+```
+```{r}
+#Dimension of dataframe :
+dim(cardio)
+
+#Column names of all columns present in dataframe :
+names(cardio)
+```
+```{r}
+#Displaying the summary of the dataset :
+summary(cardio)
+```
+```{r}
+#Displaying the first six rows of the cardio dataset :
+head(cardio)
+```
+```{r}
+#Displaying the last six rows of the cardio dataset :
+tail(cardio)
+```
+* * *
+
+## Frame your objectives
+```{r}
+#1. Exploratory Data Analysis (EDA) with Data Visualization
+#2. Find correlation between the factors(causes) and the disease
+#3. Predict the occurrence of disease based on the factors using ML Model.
+```
+* * *
+
+## Is there any work previously reported on the problem and the data? If so, discuss it here.
+```{r}
+# Yes, Exploratory Data Analysis  as well as Comparison of ML Models in python has been done on this data.
+#What I want to do (extra)except the reported work is to also correlate the disease causing factors among themselves to find if they indirectly affect the disease or not.
+
+# Reference: https://www.kaggle.com/sulianova/cardiovascular-disease-dataset
+```
+
+* * *
+
+# Review-2 : Exploratory Data Analysis with Visualization
+* * *
+## Data Preparation (Data Cleaning)
+
+```{r}
+# Checking if there are any NAs or missing values in a dataset?
+colSums(is.na(cardio))
+# So there are no N/A values.
+```
+
+* * *
+
+## Removing outliers
+
+### Anomalies and entries with unreasonable values are removed from the original dataset: extreme weight and height values, as well as extreme diastolic and systolic blood pressure values, for example, if we look height and weight columns, we will notice that minimum height is 55 cm and minimum weight is 10 kg. That has to be an error, since minimum age is 10798 days, which equals to 29 years. On the other hand, the maximum height is 250 cm and the highest weight is 200 kg, which might be irrelevant, when generalizing data. To deal with these errors.Removing values in which ap_hi is lower than ap_lo.
+```{r}
+summary(cardio)
+cardio <- cardio[,2:13] # removing 'index' column
+ap_cleaned <- cardio %>% filter(ap_hi>ap_lo)
+height_cleaned <- ap_cleaned %>% filter(height >= 140,height <= 220)
+weight_cleaned <- height_cleaned %>% filter(weight >= 30)
+ap_cleaned2 <- weight_cleaned %>% filter(ap_lo >= 40,ap_lo <= 100)
+cleaned_cardio <- ap_cleaned2 %>% filter(ap_hi >= 80 ,ap_hi <= 180)
+summary(cleaned_cardio)
+#boxplot(cleaned_cardio$ap_lo,cleaned_cardio$ap_hi,col=c("Yellow","Red"),names=c("ap_lo","ap_hi"),main="Comparison of ap_lo & ap_hi")
+```
+* * *
+
+### Calculating BMI (Body Mass Index) and getting the correlation plots
+
+```{r}
+cleaned_cardio$BMI=cleaned_cardio$weight/(cleaned_cardio$height/100)^2
+a=ggcorr(cleaned_cardio,label = TRUE,label_alpha = TRUE)
+b=ggcorr(cleaned_cardio,label = TRUE,label_alpha = TRUE,method = c("all.obs", "spearman"))
+```
+
+* * *
+
+### Some categorical variables such as "cardio", "active", "alcohol" are treated as continuous variables in the original dataset. Thus, we need to make these variables categorical. Checking categorical variables in the dataset.
+```{r}
+cols = c("gender","cholesterol", "gluc", "smoke", "alco", "active","cardio")
+cleaned_cardio[cols] = lapply(cleaned_cardio[cols], factor)
+summary(cleaned_cardio)
+```
+
+* * *
+## Initial Analysis on variables
+
+### The distribution of gender:
+```{r}
+Gender_Dist=table(cleaned_cardio$gender)
+row.names(Gender_Dist)<-c("Female","Male")
+Gender_Dist
+ggplot(cleaned_cardio,aes(gender))+geom_bar(fill=c("green","red"))+labs(title = 'Gender Distribution')
+```
+
+* * *
+
+### Alcohol consumption based on gender:
+```{r}
+x=table(cleaned_cardio$gender,cleaned_cardio$alco)
+row.names(x)<-c("Female","Male")
+colnames(x)<-c("Not Alcoholic","Alcoholic")
+x
+ggplot(cleaned_cardio,aes(alco))+geom_bar(aes(fill=gender))+labs(title="Alcohol Consumption")
+```
+
+* * *
+### Average weight distribution based on gender:
+```{r}
+cleaned_cardio%>%
+  group_by(gender)%>%
+  summarise(MeanWt=mean(weight))
+# 1 represents women, 2 represents men
+```
+* * *
+### To see how the target class is distributed among men and women:
+```{r}
+y=table(cleaned_cardio$gender,cleaned_cardio$cardio)
+colnames(y)<-c("No Disease","Disease")
+row.names(y)<-c("Female","Male")
+y
+ggplot(cleaned_cardio,aes(gender))+geom_bar(aes(fill=cardio))+labs(title = 'Gender Distribution w.r.t Disease')
+
+```
+
+* * *
+
+### Checking how age is spread among target class, at what age does the number of people with CVD increase?
+```{r}
+options(digits=2)
+agedis=as.integer(cleaned_cardio$age/365)
+ggplot(cleaned_cardio,aes(x=agedis))+geom_bar(aes(fill=cardio))+labs(x='Age',title = 'Age Distribution w.r.t Disease')
+#It can be observed that people over 50 years of age are more likely to have the disease(CVD).
+```
+
+* * *
+
+### Distribution Plot of cholestrol levels w.r.t disease
+```{r}
+ggplot(cleaned_cardio,aes(cholesterol))+geom_bar(aes(fill=cardio))+labs(title = 'Cholestrol Distribution w.r.t Disease')
+#From graph, we can see that 3rd level (well above high) has a very high ratio to cause the disease.
+```
+
+* * *
+
+### Distribution Plot of people who smoke w.r.t disease
+```{r}
+ggplot(cleaned_cardio,aes(smoke))+geom_bar(aes(fill=cardio))+labs(title = 'Smoking Distribution w.r.t Disease')
+#From graph, we can see that distribution is similar for disease vs non-disease, and smoking factor is very small to cause the disease.
+```
+
+* * *
+
+### Distribution Plot of people who consume alcohol w.r.t disease
+```{r}
+ggplot(cleaned_cardio,aes(alco))+geom_bar(aes(fill=cardio))+labs(title = 'Alcohol Consumption w.r.t Disease')
+#From graph, we can see that distribution is similar for disease vs non-disease, and alcohol factor is very small to cause the disease.
+```
+
+* * *
+
+### Correlation matrix
+
+```{r}
+#Pearson's method
+a
+
+#Spearman's method
+b
+
+# It is clear that out of all the factors- glucose, cholesetrol,
+#blood pressure(ap_hi and ap_lo), weight and age are the ones 
+#which have a positive correlation with cardio (i.e if they increase,
+#chances of disease also increases), with high blood pressure
+#being the most common factor for the disease.
+```
+* * *
+
+### Distribution Plot of BMI w.r.t disease
+
+```{r}
+ggplot(cleaned_cardio,aes(y=BMI))+geom_boxplot(aes(color=cardio))
+#Higher BMI for people having the diasease.
+```
+
+### Distribution Plot of gender vs BMI who consume alcohol w.r.t disease
+
+```{r}
+ggplot(cleaned_cardio,aes(gender,BMI))+geom_boxplot(aes(color=alco))+facet_wrap(cardio~.)
+#People who consume alcohol and have higher BMI tend to have the disease.
+```
+
+### Distribution Plot of people's cholesterol levels who consume alcohol w.r.t disease
+
+```{r}
+ggplot(cleaned_cardio,aes(cholesterol))+geom_bar(aes(fill=cardio))+facet_wrap(alco~.)
+#Ratio of people with 3rd cholesterol level (well above normal) & consume alcohol having the disease to not having disease is the highest.
+ad=nrow(cleaned_cardio%>%
+  filter(cardio==1,alco==1,cholesterol==3))/nrow(cleaned_cardio%>% filter(alco==1,cholesterol=='3'))
+ad
+```
+
+### Distribution Plot of people's cholesterol levels who smoke w.r.t disease
+
+```{r}
+ggplot(cleaned_cardio,aes(cholesterol))+geom_bar(aes(fill=cardio))+facet_wrap(smoke~.)
+
+sd=nrow(cleaned_cardio%>%
+  filter(cardio==1,smoke==1,cholesterol==3))/nrow(cleaned_cardio%>% filter(smoke==1,cholesterol=='3'))
+
+sd
+#Ratio of people with 3rd cholesterol level (well above normal) & smoke having the disease to not having disease is the highest.
+```
+
+### Distribution Plot of people who smoke and consume alcohol w.r.t disease
+
+```{r}
+ggplot(cleaned_cardio,aes(alco))+geom_bar(aes(fill=cardio))+facet_wrap(smoke~.)
+#Chances of having the disease are 50%.
+```
+
+### Distribution Plot of cholesterol levels vs ap_hi (systolic blood pressure) who consume alcohol w.r.t disease
+
+```{r}
+ggplot(cleaned_cardio,aes(cholesterol,ap_hi))+geom_boxplot(aes(color=cardio))+facet_wrap(alco~.)
+#People with 2nd cholesterol level having the disease were found with maximum systolic blood pressure.
+```
+
+### Distribution Plot of cholesterol levels vs ap_hi (systolic blood pressure) who smoke w.r.t disease
+
+```{r}
+ggplot(cleaned_cardio,aes(cholesterol,ap_hi))+geom_boxplot(aes(color=cardio))+facet_wrap(smoke~.)
+#People with 2nd cholesterol level having the disease were found with maximum systolic blood pressure.
+```
+
+## Inference
+
+### From my analysis, i can say that this data is not good for predicting the disease or buidling prediction model as the highest correlation for any predictor variable with target variable i got was 0.4 which is quite less for the prediction.
+
+### In terms of detailed analysis and trends, 
+ * Cholesterol's 3rd level (well above high) has a high ratio to cause the disease (Out of 100 people with cholesterol level=3, 76 are likely to have the disease)
+ * Systolic blood pressure (ap_hi) has the highest correlation with cardio variable i.e. 0.4 (in spearman's method, even ap_lo got 0.4)
+ * People over 50 years of age are more likely to have the disease(CVD)
+ * Alcohol consumption and Smoking factor show similar trends with very less chance to cause the disease
+ * People with higher BMI tend to have the disease
+ * Ratio of people with 3rd cholesterol level (well above normal) & consume alcohol having the disease to not having disease is the highest (0.778).
+ * Ratio of people with 3rd cholesterol level (well above normal) & smoke having the disease to not having disease is the highest (0.763).
+ 
